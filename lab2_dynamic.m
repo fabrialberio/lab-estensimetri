@@ -90,10 +90,12 @@ amplitudes_reordered = ...
 frequency_reordered = ...
     [frequency(restart_point:end); frequency(1:restart_point-1)];
 
-figure()
-hold on
-semilogy(frequency_reordered, amplitudes_reordered);
-
+figure();
+grid on;
+hold on;
+yscale log;
+xscale log;
+plot(frequency_reordered, amplitudes_reordered);
 
 %% Plot ellipses
 
