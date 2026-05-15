@@ -37,7 +37,6 @@ filenames = filenames(filenames ~= "");
 
 Hz_labels = arrayfun(@(f) sprintf("%.02f Hz", f), frequency);
 
-
 %% Extract deformations and forces from the files.
 
 sample_count = 10000;       % Numero di campioni restituiti dall'oscilloscopio.
@@ -61,14 +60,49 @@ for i = 1:length(filenames)
 
     deformations{i} = timeseries( ...
         table2array(channel_1) ./ extensimeter_voltage, ...
-        linspace(0, channel_1_interval, sample_count), ...
+        linspace(0, channel_1_interval * sample_count, sample_count), ...
         "Name", "Deformation [mV/V]");
     forces{i} = timeseries( ...
         table2array(channel_2), ...
-        linspace(0, channel_2_interval, sample_count), ...
+        linspace(0, channel_2_interval * sample_count, sample_count), ...
         "Name", "Force [mV]");
 end
 
+%% Fourier transform
+
+deformation_amplitudes = zeros(length(filenames), 1);
+deformation_frequencies = zeros(length(filenames), 1);
+force_amplitudes = zeros(length(filenames), 1);
+force_frequencies = zeros(length(filenames), 1);
+
+for i = 1:length(filenames)
+    deformation_fft = fft(deformations{i}.Data);
+    deformation_fft = abs(deformation_fft(1:end/2)) / sample_count;
+
+    [peak_amplitude, peak_index] = max(deformation_fft);
+    peak_frequency = peak_index / deformations{i}.Time(end);
+
+    deformation_amplitudes(i) = peak_amplitude;
+    deformation_frequencies(i) = peak_frequency;
+
+    force_fft = fft(forces{i}.Data);
+    force_fft = abs(force_fft(1:end/2)) / sample_count;
+
+    [peak_amplitude, peak_index] = max(force_fft);
+    peak_frequency = peak_index / forces{i}.Time(end);
+
+    force_amplitudes(i) = peak_amplitude;
+    force_frequencies(i) = peak_frequency;
+end
+
+amplitudes = deformation_amplitudes ./ force_amplitudes;
+
+figure();
+grid on;
+hold on;
+yscale log;
+xscale log;
+scatter(frequency, amplitudes);
 
 %% Plot Bode diagram
 
