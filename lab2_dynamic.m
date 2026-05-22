@@ -72,64 +72,95 @@ end
 
 deformation_amplitudes = zeros(length(filenames), 1);
 deformation_frequencies = zeros(length(filenames), 1);
+deformation_phases = zeros(length(filenames), 1);
 force_amplitudes = zeros(length(filenames), 1);
 force_frequencies = zeros(length(filenames), 1);
+force_phases = zeros(length(filenames), 1);
 
 for i = 1:length(filenames)
     deformation_fft = fft(deformations{i}.Data);
-    deformation_fft = abs(deformation_fft(1:end/2)) / sample_count;
+    deformation_fft = deformation_fft(1:end/2) / sample_count;
 
-    [peak_amplitude, peak_index] = max(deformation_fft);
-    peak_frequency = peak_index / deformations{i}.Time(end);
-
-    deformation_amplitudes(i) = peak_amplitude;
-    deformation_frequencies(i) = peak_frequency;
+    [deformation_amplitudes(i), peak_index] = max(abs(deformation_fft));
+    deformation_frequencies(i) = peak_index / deformations{i}.Time(end);
+    deformation_phases(i) = angle(deformation_fft(peak_index));
 
     force_fft = fft(forces{i}.Data);
-    force_fft = abs(force_fft(1:end/2)) / sample_count;
+    force_fft = force_fft(1:end/2) / sample_count;
 
-    [peak_amplitude, peak_index] = max(force_fft);
-    peak_frequency = peak_index / forces{i}.Time(end);
-
-    force_amplitudes(i) = peak_amplitude;
-    force_frequencies(i) = peak_frequency;
+    [force_amplitudes(i), peak_index] = max(abs(force_fft));
+    force_frequencies(i) = peak_index / forces{i}.Time(end);
+    force_phases(i) = angle(force_fft(peak_index));
 end
 
-amplitudes = deformation_amplitudes ./ force_amplitudes;
+amplitudes = 20 * log10(deformation_amplitudes ./ force_amplitudes);
+phases = mod(rad2deg(deformation_phases - force_phases), 360) - 360;
+
+%% Plot Bode diagrams
+xi = 0.07;      % Coefficiente di smorzamento analitico.
+omega_0 = 136;  % Pulsazione naturale analitica, in rad/s.
+
+% TODO: CONTROLLARE NON SONO GIUSTE!!!!!
+analytical_amplitudes = @(omega) 20 * log10(1 ./ sqrt((1 - (omega / omega_0).^2).^2 + (2 * xi * omega / omega_0).^2));
+analytical_phases = @(omega) mod(rad2deg(atan2(2 * xi * omega / omega_0, 1 - (omega / omega_0).^2)), 360) - 360;
 
 figure();
-grid on;
+tiledlayout(2, 1);
+
+nexttile();
 hold on;
-yscale log;
+grid on;
+title("Diagramma di Bode dell'ampiezza");
+xlabel("Frequenza [Hz]");
+ylabel("Rapporto di ampiezza [dB]");
 xscale log;
 scatter(frequency, amplitudes);
+fplot(@(f) analytical_amplitudes(2 * pi * f), [min(frequency), max(frequency)], "--");
 
-%% Plot Bode diagram
+nexttile();
+hold on;
+grid on;
+title("Diagramma di Bode della fase");
+xlabel("Frequenza [Hz]");
+ylabel("Sfasamento [°]");
+yticks(-360:90:0);
+xscale log;
+scatter(frequency, phases);
+fplot(@(f) analytical_phases(2 * pi * f), [min(frequency), max(frequency)], "--");
 
-deformation_amplitudes = zeros(1, length(filenames));
-force_amplitudes = zeros(1, length(filenames));
+%% Test FFT estimation
 
-% Adesso per misurare l'ampiezza ho preso la differenza tra valore massimo e minimo della serie.
-% È un metodo primitivo molto suscettibile al disturbo, sarebbe meglio usare Fourier.
-for i = 1:length(filenames)
-    deformation_amplitudes(i) = max(deformations{i}) - min(deformations{i});
-    force_amplitudes(i) = max(forces{i}) - min(forces{i});
-end
+i = 39;
 
-amplitudes = deformation_amplitudes ./ force_amplitudes;
+deformation_fft = fft(deformations{i}.Data);
+deformation_fft = deformation_fft(1:end/2) / (sample_count / 2);
 
-restart_point = length(filenames) - 6;
-amplitudes_reordered = ...
-    [amplitudes(restart_point:end), amplitudes(1:restart_point-1)];
-frequency_reordered = ...
-    [frequency(restart_point:end); frequency(1:restart_point-1)];
+[deformation_amplitude, peak_index] = max(abs(deformation_fft));
+deformation_frequency = peak_index / max(deformations{i}.Time);
+deformation_phase = angle(deformation_fft(peak_index));
+
+force_fft = fft(forces{i}.Data);
+force_fft = force_fft(1:end/2) / (sample_count / 2);
+
+[force_amplitude, peak_index] = max(abs(force_fft));
+force_frequency = peak_index / max(forces{i}.Time);
+force_phase = angle(force_fft(peak_index));
 
 figure();
-grid on;
 hold on;
-yscale log;
-xscale log;
-plot(frequency_reordered, amplitudes_reordered);
+grid on;
+
+plot(deformations{i});
+plot(forces{i});
+
+magic_factor = 2 * pi; % Should be 2pi
+
+fplot(@(t) deformation_amplitude * cos(magic_factor * deformation_frequency * t + deformation_phase), ...
+    [0, max(deformations{i}.Time)], "--");
+fplot(@(t) force_amplitude * cos(magic_factor * force_frequency * t + force_phase), ...
+    [0, max(forces{i}.Time)], "--");
+
+legend("Deformation", "Force", "Estimated deformation", "Estimated force");
 
 %% Plot ellipses
 
