@@ -1,4 +1,4 @@
-%% Associate filenames to frequency
+%% Associazione dei filename con le frequenze
 
 filename_template = "lab2/data_45_%03d.csv";
 max_filename_number = 54;
@@ -37,7 +37,7 @@ filenames = filenames(filenames ~= "");
 
 Hz_labels = arrayfun(@(f) sprintf("%.02f Hz", f), frequency);
 
-%% Extract deformations and forces from the files.
+%% Estrazione di forze e deformazioni dai file
 
 sample_count = 10000;       % Numero di campioni restituiti dall'oscilloscopio.
 extensimeter_voltage = 5;   % Voltaggio di alimentazione dell'estensimetro.
@@ -68,41 +68,75 @@ for i = 1:length(filenames)
         "Name", "Force [mV]");
 end
 
-%% Fourier transform
+%% Trasformata di Fourier
 
 deformation_amplitudes = zeros(length(filenames), 1);
 deformation_frequencies = zeros(length(filenames), 1);
 deformation_phases = zeros(length(filenames), 1);
-force_amplitudes = zeros(length(filenames), 1);
+force_magnitudes = zeros(length(filenames), 1);
 force_frequencies = zeros(length(filenames), 1);
 force_phases = zeros(length(filenames), 1);
 
-for i = 1:length(filenames)
-    deformation_fft = fft(deformations{i}.Data);
-    deformation_fft = deformation_fft(1:end/2) / sample_count;
+function [frequency, magnitude, phase] = fft_analysis(data, time_duration, expected_frequency)
+    % Questa funzione analizza i dati con la Trasformata di Fourier.
 
-    [deformation_amplitudes(i), peak_index] = max(abs(deformation_fft));
-    deformation_frequencies(i) = peak_index / deformations{i}.Time(end);
-    deformation_phases(i) = angle(deformation_fft(peak_index));
+    sample_count = length(data);
+    padded_count = 2^nextpow2(sample_count);
+    
+    % Espansione con zeri dei dati per migliorare la risoluzione e ridurre il leakage.
+    data_padded = zeros(padded_count, 1);
+    data_padded(1:sample_count) = data;
+    
+    fft_result = fft(data_padded);
+    fft_result = fft_result(1:end/2) / (padded_count / 2);
+    
+    % Selezione di un intervallo di frequenze vicino alla frequenza prevista.
+    window_radius = 2;
+    expected_index = round(expected_frequency * time_duration / sample_count * padded_count);
+    fft_result_windowed = fft_result(expected_index-window_radius:expected_index+window_radius);
 
-    force_fft = fft(forces{i}.Data);
-    force_fft = force_fft(1:end/2) / sample_count;
+    [magnitude, peak_index_windowed] = max(abs(fft_result_windowed));
+    magnitude = magnitude * padded_count / sample_count;
+    phase = angle(fft_result_windowed(peak_index_windowed));
 
-    [force_amplitudes(i), peak_index] = max(abs(force_fft));
-    force_frequencies(i) = peak_index / forces{i}.Time(end);
-    force_phases(i) = angle(force_fft(peak_index));
+    peak_index = peak_index_windowed + expected_index - window_radius;
+    frequency = peak_index / time_duration * sample_count / padded_count;
 end
 
-amplitudes = 20 * log10(deformation_amplitudes ./ force_amplitudes);
-phases = mod(rad2deg(deformation_phases - force_phases), 360) - 360;
+for i = 1:length(filenames)
+    [deformation_frequencies(i), deformation_amplitudes(i), deformation_phases(i)] = ...
+        fft_analysis(deformations{i}.Data, max(deformations{i}.Time), frequency(i));
+    
+    [force_frequencies(i), force_magnitudes(i), force_phases(i)] = ...
+        fft_analysis(forces{i}.Data, max(forces{i}.Time), frequency(i));
+end
 
-%% Plot Bode diagrams
-xi = 0.07;      % Coefficiente di smorzamento analitico.
-omega_0 = 136;  % Pulsazione naturale analitica, in rad/s.
+magnitudes = 20 * log10(deformation_amplitudes ./ force_magnitudes);    % Rapporto di ampiezza, in dB.
+phases = mod(rad2deg(deformation_phases - force_phases), 360) - 360;    % Sfasamento, riportato all'intervallo [-180°, 0°].
 
-% TODO: CONTROLLARE NON SONO GIUSTE!!!!!
-analytical_amplitudes = @(omega) 20 * log10(1 ./ sqrt((1 - (omega / omega_0).^2).^2 + (2 * xi * omega / omega_0).^2));
-analytical_phases = @(omega) mod(rad2deg(atan2(2 * xi * omega / omega_0, 1 - (omega / omega_0).^2)), 360) - 360;
+%% Diagrammi di Bode
+
+omega = linspace(log(0.1), log(500), 500);
+omega = exp(omega);     % Frequenze di campionamento delle FdT, con andamento esponenziale.
+
+% FdT del sistema analitico, con frequenza caratteristica w0 e smorzamento xi.
+%                    1
+% H(s) = --------------------------
+%        1/w0^2 s^2 + 2 xi/w0 s + 1
+xi = 0.07;
+w0 = 136;
+
+[analytical_magnitudes, analytical_phases] = ...
+    bode(tf(1, [1 / (w0^2), 2 * xi / w0, 1]), omega);
+
+% FdT del sistema analitico ma con smorzamento xi_2.
+%                     1
+% H(s) = ----------------------------
+%        1/w0^2 s^2 + 2 xi_2/w0 s + 1
+xi_2 = 1.5;
+
+[analytical_xi_magnitudes, analytical_xi_phases] = ...
+    bode(tf(1, [1 / (w0^2), 2 * xi_2 / w0, 1]), omega);
 
 figure();
 tiledlayout(2, 1);
@@ -114,8 +148,11 @@ title("Diagramma di Bode dell'ampiezza");
 xlabel("Frequenza [Hz]");
 ylabel("Rapporto di ampiezza [dB]");
 xscale log;
-scatter(frequency, amplitudes);
-fplot(@(f) analytical_amplitudes(2 * pi * f), [min(frequency), max(frequency)], "--");
+scatter(frequency, magnitudes);
+plot(omega, 20 * log10(analytical_magnitudes(:)));
+plot(omega, 20 * log10(analytical_xi_magnitudes(:)));
+
+legend(["Dati misurati"; "Soluzione analitica"; sprintf("Soluzione analitica con $\\xi=%.02f$", xi_2)], "Interpreter", "latex")
 
 nexttile();
 hold on;
@@ -126,41 +163,8 @@ ylabel("Sfasamento [°]");
 yticks(-360:90:0);
 xscale log;
 scatter(frequency, phases);
-fplot(@(f) analytical_phases(2 * pi * f), [min(frequency), max(frequency)], "--");
-
-%% Test FFT estimation
-
-i = 39;
-
-deformation_fft = fft(deformations{i}.Data);
-deformation_fft = deformation_fft(1:end/2) / (sample_count / 2);
-
-[deformation_amplitude, peak_index] = max(abs(deformation_fft));
-deformation_frequency = peak_index / max(deformations{i}.Time);
-deformation_phase = angle(deformation_fft(peak_index));
-
-force_fft = fft(forces{i}.Data);
-force_fft = force_fft(1:end/2) / (sample_count / 2);
-
-[force_amplitude, peak_index] = max(abs(force_fft));
-force_frequency = peak_index / max(forces{i}.Time);
-force_phase = angle(force_fft(peak_index));
-
-figure();
-hold on;
-grid on;
-
-plot(deformations{i});
-plot(forces{i});
-
-magic_factor = 2 * pi; % Should be 2pi
-
-fplot(@(t) deformation_amplitude * cos(magic_factor * deformation_frequency * t + deformation_phase), ...
-    [0, max(deformations{i}.Time)], "--");
-fplot(@(t) force_amplitude * cos(magic_factor * force_frequency * t + force_phase), ...
-    [0, max(forces{i}.Time)], "--");
-
-legend("Deformation", "Force", "Estimated deformation", "Estimated force");
+plot(omega, analytical_phases(:));
+plot(omega, analytical_xi_phases(:));
 
 %% Plot ellipses
 
