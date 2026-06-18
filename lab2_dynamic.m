@@ -77,21 +77,22 @@ force_magnitudes = zeros(length(filenames), 1);
 force_frequencies = zeros(length(filenames), 1);
 force_phases = zeros(length(filenames), 1);
 
-function [frequency, magnitude, phase] = fft_analysis(data, time_duration, expected_frequency)
+function [frequency, magnitude, phase, fft_result] = fft_analysis(data, time_duration, expected_frequency)
     % Questa funzione analizza i dati con la Trasformata di Fourier.
 
     sample_count = length(data);
-    padded_count = 2^nextpow2(sample_count);
+    %padded_count = 2^nextpow2(sample_count);
+    padded_count = lcm(sample_count, ceil(expected_frequency));
     
     % Espansione con zeri dei dati per migliorare la risoluzione e ridurre il leakage.
     data_padded = zeros(padded_count, 1);
     data_padded(1:sample_count) = data;
     
     fft_result = fft(data_padded);
-    fft_result = fft_result(1:end/2) / (padded_count / 2);
+    fft_result = fft_result(2:end/2) / (padded_count / 2); % Shift left because it is zero-indexed. (?)
     
     % Selezione di un intervallo di frequenze vicino alla frequenza prevista.
-    window_radius = 2;
+    window_radius = 1;
     expected_index = round(expected_frequency * time_duration / sample_count * padded_count);
     fft_result_windowed = fft_result(expected_index-window_radius:expected_index+window_radius);
 
@@ -114,6 +115,51 @@ end
 magnitudes = 20 * log10(deformation_amplitudes ./ force_magnitudes);    % Rapporto di ampiezza, in dB.
 phases = mod(rad2deg(deformation_phases - force_phases), 360) - 360;    % Sfasamento, riportato all'intervallo [-180°, 0°].
 
+%% Spiegazione trasformata di Fourier
+
+i = 20;
+time_duration = max(deformations{i}.Time);
+expected_frequency = frequency(i);
+
+[~, ~, ~, deformations_fft] = fft_analysis(deformations{i}.Data, time_duration, expected_frequency);
+[~, ~, ~, forces_fft] = fft_analysis(forces{i}.Data, time_duration, expected_frequency);
+
+sample_count = length(deformations{i}.Data);
+padded_count = lcm(sample_count, ceil(expected_frequency));
+
+display_count = round(length(deformations_fft) / 100);
+
+figure();
+tiledlayout(2, 1);
+%sgtitle(sprintf("Spettro delle frequenze della misura a %.01f Hz", expected_frequency))
+
+nexttile();
+grid on;
+hold on;
+xlabel("Frequenza [Hz]");
+ylabel("Modulo")
+plot( ...
+    (1:display_count) / time_duration * sample_count / padded_count, ...
+    abs(deformations_fft(1:display_count)) * padded_count / sample_count);
+plot( ...
+    (1:display_count) / time_duration * sample_count / padded_count, ...
+    abs(forces_fft(1:display_count)) * padded_count / sample_count);
+xline(expected_frequency, "--r");
+legend(["Deformazione"; "Forza"; "Frequenza di misura"])
+
+nexttile();
+grid on;
+hold on;
+xlabel("Frequenza [Hz]");
+ylabel("Fase [°]")
+plot( ...
+    (1:display_count) / time_duration * sample_count / padded_count, ...
+    rad2deg(angle(deformations_fft(1:display_count))));
+plot( ...
+    (1:display_count) / time_duration * sample_count / padded_count, ...
+    rad2deg(angle(forces_fft(1:display_count))));
+xline(expected_frequency, "--r");
+
 %% Diagrammi di Bode
 
 omega = linspace(log(0.1), log(500), 500);
@@ -133,10 +179,38 @@ w0 = 136;
 %                     1
 % H(s) = ----------------------------
 %        1/w0^2 s^2 + 2 xi_2/w0 s + 1
-xi_2 = 1.5;
+xi_2 = 1;
 
 [analytical_xi_magnitudes, analytical_xi_phases] = ...
     bode(tf(1, [1 / (w0^2), 2 * xi_2 / w0, 1]), omega);
+
+approx_xi = 1.5;
+low_w0 = 0.12;
+high_w0 = 400;
+
+% Spiega perfettament la fase.
+[approx_xi_magnitudes, approx_xi_phases] = ...
+    bode( ...
+        tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) * tf([1/low_w0, 8], 1) ...
+        * tf(1, [1 / (high_w0^2), 2 * approx_xi / high_w0, 1]), ...
+        omega);
+
+
+% Spiega perfettamente l'ampiezza.
+[approx_xi_magnitudes, approx_xi_phases] = ...
+    bode( ...
+        tf([1/low_w0, 8], 1) * tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) ...
+        * tf(1, [1 / (w0^2), 2 * approx_xi / w0, 1]) * tf(1, [1/w0, 1]) * tf(1, [1/w0, 1]), ...
+        omega);
+
+% Spiega perfettamente l'ampiezza.
+[approx_xi_magnitudes, approx_xi_phases] = ...
+    bode( ...
+        tf([1/low_w0, 8], 1) * tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) ...
+        * tf(1, [1 / (w0^2), 2 * approx_xi / w0, 1]) * tf(1, [1/w0, 1]) * tf(1, [1/w0, 1]), ...
+        omega);
+
+
 
 figure();
 tiledlayout(2, 1);
@@ -151,6 +225,7 @@ xscale log;
 scatter(frequency, magnitudes);
 plot(omega, 20 * log10(analytical_magnitudes(:)));
 plot(omega, 20 * log10(analytical_xi_magnitudes(:)));
+plot(omega, 20 * log10(approx_xi_magnitudes(:)));
 
 legend(["Dati misurati"; "Soluzione analitica"; sprintf("Soluzione analitica con $\\xi=%.02f$", xi_2)], "Interpreter", "latex")
 
@@ -165,6 +240,7 @@ xscale log;
 scatter(frequency, phases);
 plot(omega, analytical_phases(:));
 plot(omega, analytical_xi_phases(:));
+plot(omega, approx_xi_phases(:));
 
 %% Plot ellipses
 
