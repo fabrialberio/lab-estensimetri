@@ -47,7 +47,7 @@ forces = cell(length(filenames));       % Ogni misura di forza è salvata come t
 
 for i = 1:length(filenames)
     lines = readlines(filenames(i));
-    interval_line = split(lines(7), ",");   % Le righe 2, 3 contengono gli intervalli per i due canali, in microsecondi.
+    interval_line = split(lines(7), ",");   % Le colonne 2, 3 contengono gli intervalli per i due canali, in microsecondi.
 
     channel_1_interval = str2double(erase(interval_line(2), "uS")) * 1e-6;
     channel_2_interval = str2double(erase(interval_line(3), "uS")) * 1e-6;
@@ -61,16 +61,16 @@ for i = 1:length(filenames)
     deformations{i} = timeseries( ...
         table2array(channel_1) ./ extensimeter_voltage, ...
         linspace(0, channel_1_interval * sample_count, sample_count), ...
-        "Name", "Deformation [mV/V]");
+        "Name", "Deformazione [mV/V]");
     forces{i} = timeseries( ...
         table2array(channel_2), ...
         linspace(0, channel_2_interval * sample_count, sample_count), ...
-        "Name", "Force [mV]");
+        "Name", "Forza [mV]");
 end
 
 %% Trasformata di Fourier
 
-deformation_amplitudes = zeros(length(filenames), 1);
+deformation_magnitudes = zeros(length(filenames), 1);
 deformation_frequencies = zeros(length(filenames), 1);
 deformation_phases = zeros(length(filenames), 1);
 force_magnitudes = zeros(length(filenames), 1);
@@ -81,10 +81,12 @@ function [frequency, magnitude, phase, fft_result] = fft_analysis(data, time_dur
     % Questa funzione analizza i dati con la Trasformata di Fourier.
 
     sample_count = length(data);
-    %padded_count = 2^nextpow2(sample_count);
-    padded_count = lcm(sample_count, ceil(expected_frequency));
+    %padded_count = lcm(sample_count, ceil(expected_frequency));
+    padded_count = sample_count;
     
     % Espansione con zeri dei dati per migliorare la risoluzione e ridurre il leakage.
+    % Questa tecnica si è dimostrata non necessaria, dato che padded_count = sample_count
+    % questo codice non modifica il risultato dell'FFT.
     data_padded = zeros(padded_count, 1);
     data_padded(1:sample_count) = data;
     
@@ -105,14 +107,14 @@ function [frequency, magnitude, phase, fft_result] = fft_analysis(data, time_dur
 end
 
 for i = 1:length(filenames)
-    [deformation_frequencies(i), deformation_amplitudes(i), deformation_phases(i)] = ...
+    [deformation_frequencies(i), deformation_magnitudes(i), deformation_phases(i)] = ...
         fft_analysis(deformations{i}.Data, max(deformations{i}.Time), frequency(i));
     
     [force_frequencies(i), force_magnitudes(i), force_phases(i)] = ...
         fft_analysis(forces{i}.Data, max(forces{i}.Time), frequency(i));
 end
 
-magnitudes = 20 * log10(deformation_amplitudes ./ force_magnitudes);    % Rapporto di ampiezza, in dB.
+magnitudes = 20 * log10(deformation_magnitudes ./ force_magnitudes);    % Rapporto di ampiezza, in dB.
 phases = mod(rad2deg(deformation_phases - force_phases), 360) - 360;    % Sfasamento, riportato all'intervallo [-180°, 0°].
 
 %% Spiegazione trasformata di Fourier
@@ -125,7 +127,7 @@ expected_frequency = frequency(i);
 [~, ~, ~, forces_fft] = fft_analysis(forces{i}.Data, time_duration, expected_frequency);
 
 sample_count = length(deformations{i}.Data);
-padded_count = lcm(sample_count, ceil(expected_frequency));
+padded_count = sample_count; % lcm(sample_count, ceil(expected_frequency));
 
 display_count = round(length(deformations_fft) / 100);
 
@@ -191,9 +193,9 @@ high_w0 = 400;
 % Spiega perfettament la fase.
 [approx_xi_magnitudes, approx_xi_phases] = ...
     bode( ...
-        tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) * tf([1/low_w0, 8], 1) ...
-        * tf(1, [1 / (high_w0^2), 2 * approx_xi / high_w0, 1]), ...
-        omega);
+        tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) * tf([1/low_w0, 8], 1), ...
+            omega);
+            %* tf(1, [1 / (high_w0^2), 2 * approx_xi / high_w0, 1]), ...
 
 
 % Spiega perfettamente l'ampiezza.
@@ -206,11 +208,22 @@ high_w0 = 400;
 % Spiega perfettamente l'ampiezza.
 [approx_xi_magnitudes, approx_xi_phases] = ...
     bode( ...
-        tf([1/low_w0, 8], 1) * tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) ...
+        tf(1, [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) ...
         * tf(1, [1 / (w0^2), 2 * approx_xi / w0, 1]) * tf(1, [1/w0, 1]) * tf(1, [1/w0, 1]), ...
         omega);
 
 
+w0 = 100;
+[approx_xi_magnitudes, approx_xi_phases] = ...
+    bode( ...
+        tf(1, [1, 2 * approx_xi * low_w0, low_w0^2]) ...
+        * tf([1, 1], [1/high_w0^2, 2 * approx_xi / high_w0, 1]) ...
+        * tf([1, 1], [1/high_w0^2, 2 * approx_xi / high_w0, 1]) ...
+        , ...
+            omega);
+
+[approx_2ndorder_magnitudes, ~] = bode(tf(60^2, [1, 0]) * tf(1, [1, 0]), omega(round(end/3*2):end));
+[approx_3ndorder_magnitudes, ~] = bode(tf(90^3, [1, 0]) * tf(1, [1, 0]) * tf(1, [1, 0]), omega(round(end/3*2):end));
 
 figure();
 tiledlayout(2, 1);
@@ -222,12 +235,16 @@ title("Diagramma di Bode dell'ampiezza");
 xlabel("Frequenza [Hz]");
 ylabel("Rapporto di ampiezza [dB]");
 xscale log;
-scatter(frequency, magnitudes);
+scatter(frequency, magnitudes)
+%scatter(frequency, 20 * log10(force_magnitudes));
+%scatter(frequency, 20 * log10(deformation_amplitudes));
 plot(omega, 20 * log10(analytical_magnitudes(:)));
 plot(omega, 20 * log10(analytical_xi_magnitudes(:)));
 plot(omega, 20 * log10(approx_xi_magnitudes(:)));
+plot(omega(round(end/3*2):end), 20 * log10(approx_2ndorder_magnitudes(:)), '--');
+plot(omega(round(end/3*2):end), 20 * log10(approx_3ndorder_magnitudes(:)), '--');
 
-legend(["Dati misurati"; "Soluzione analitica"; sprintf("Soluzione analitica con $\\xi=%.02f$", xi_2)], "Interpreter", "latex")
+legend(["Dati misurati"; "Soluzione analitica"; sprintf("Soluzione analitica con $\\xi=%.02f$", xi_2); "Risonanza a bassa frequenza"], "Interpreter", "latex")
 
 nexttile();
 hold on;
@@ -238,6 +255,8 @@ ylabel("Sfasamento [°]");
 yticks(-360:90:0);
 xscale log;
 scatter(frequency, phases);
+%scatter(frequency, mod(rad2deg(deformation_phases), 360) - 360);
+%scatter(frequency, mod(rad2deg(force_phases), 360) - 360);
 plot(omega, analytical_phases(:));
 plot(omega, analytical_xi_phases(:));
 plot(omega, approx_xi_phases(:));
