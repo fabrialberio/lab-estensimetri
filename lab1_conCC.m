@@ -1,8 +1,20 @@
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%                                                         %%%%%%%%%
+%%%%%%%%%         LABORATORIO 1: CAMPAGNA DI MISURA STATICA       %%%%%%%%%
+%%%%%%%%%                                                         %%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                            
+clear
 clc
-clear all
 close all
-%% Dati
+
+%% Codice 
+
+% --------------------------- Caricamento dati ----------------------------
 
 % Provino in alluminio.
 b_Al = 29.94 / 1000;    % Larghezza in m.
@@ -37,10 +49,12 @@ MP_C = readtable("HB carbonio.csv", "VariableNamingRule", "preserve");
 MP_C = MP_C(~isnan(table2array(MP_C(:, 4))), :); % Rimozione valori di deformazione NaN (outlier).
 MP_C_freddo = MP_C(1:32, :);
 MP_C_caldo = MP_C(33:end, :);
-%% Calcolo di sigma, epsilon, E per ogni prova e per ogni materiale
+
+% --- Calcolo di sigma, epsilon, E per ogni prova e per ogni materiale ----
 
 materiali = ["Alluminio"; "Carbonio"];
-prove = ["Quarto di ponte a freddo", "Quarto di ponte a caldo", "Mezzo ponte a freddo", "Mezzo ponte a caldo"];
+prove = ["Quarto di ponte a freddo", "Quarto di ponte a caldo", ...
+         "Mezzo ponte a freddo", "Mezzo ponte a caldo"];
 
 % Matrici che hanno per righe i materiali e per colonne le prove.
 tabelle = {
@@ -84,7 +98,7 @@ end
 
 % Calcolo di E per ogni prova e per ogni materiale.
 E_matrix = zeros(2, 4);
-q_matrix = zeros(2, 4); % Matrice dei valori di "sbilanciamento" del ponte (intercette della retta interpolante).
+q_matrix = zeros(2, 4); 
 
 for i = 1:length(materiali)
     for j = 1:length(prove)
@@ -94,7 +108,7 @@ for i = 1:length(materiali)
     end
 end
 
-%% Rappresentazione di sigma, epsilon per ogni prova con ogni materiale
+% -- Rappresentazione di sigma, epsilon per ogni prova con ogni materiale--
 
 for i = 1:length(materiali)
     figure();
@@ -102,7 +116,7 @@ for i = 1:length(materiali)
     grid on;
     title(sprintf("Grafico sforzo-deformazione, %s", materiali(i)));
     xlabel("Deformazione (\epsilon)");
-    ylabel("Sforzo (\sigma)");
+    ylabel("Sforzo (\sigma) [Pa]");
     ylim([0, 3e7]);
     
     legenda = strings(length(prove));
@@ -110,7 +124,7 @@ for i = 1:length(materiali)
     for j = 1:length(prove)
         scatter(epsilon_matrix{i, j}, sigma_matrix{i, j});
 
-        legenda(j) = sprintf("%s (E = %f)", prove(j), E_matrix(i, j) * 1e-9);
+        legenda(j) = sprintf("%s (E = %f GPa)", prove(j), E_matrix(i, j) * 1e-9);
     end
 
     % Rette interpolanti.
@@ -125,15 +139,16 @@ for i = 1:length(materiali)
     legend(legenda);
 end
 
-%% Curve di taratura per ogni prova e materiale 
+% ----------- Curve di taratura per ogni prova e materiale ----------------
 
-%In queste matrici vengono salvati i dati relativi alle regressioni lineari
-%effettuate. 
+% In queste matrici vengono salvati i dati relativi alle regressioni lineari
+% effettuate. 
 m_matrix= zeros(2,4);
 q_matrix= zeros(2,4);
 n_matrix= zeros(2,4);
 w_matrix= zeros(2,4); 
 R_squared= zeros(2,4); 
+er_max= zeros(2,4);
 
 for i = 1:length(materiali)
  for j = 1:length(prove)
@@ -142,9 +157,9 @@ for i = 1:length(materiali)
         peso = (table2array(tabella(:, 3)) / 1000)* 9.81;   % Forza in N.
         def = table2array(tabella(:, 4)) * 1e-3;   % Deformazioni in V/V.
 
-        if i == 1 && j == 1 %Alluminio.
+        if i == 1 && j == 1 % Alluminio.
             
-            figure('Name', 'Analisi Cicli di Calibrazione - QP Alluminio a Temperatura ambiente');
+            figure('Name', 'Analisi Cicli di Taratura - QP Alluminio a Temperatura ambiente');
 
             subplot(1,3,1);
             plot(peso(1:11), def(1:11), 'r-o'); axis square;
@@ -166,12 +181,12 @@ for i = 1:length(materiali)
             grid on; title('Ciclo 3: Carico-Scarico');
             xlabel('Forza [N]'); ylabel('\DeltaV/V [-]');
 
-            [p, S, t1, t2] = plots_modello(peso, def);
+            [p, S, t1, t2, residui] = plots_modello(peso, def);
 
 
         elseif i == 1 && j == 2
 
-            figure('Name', 'Analisi Cicli di Tratura  - QP Alluminio riscaldato');
+            figure('Name', 'Analisi Cicli di Taratura - QP Alluminio riscaldato');
 
             subplot(1,3,1);
             plot(peso(1:11), def(1:11), 'r-o'); axis square;
@@ -189,7 +204,7 @@ for i = 1:length(materiali)
             grid on; title('Ciclo 3');
             xlabel('Forza [N]'); ylabel('\DeltaV/V [-]');
            
-            [p, S, t1, t2] = plots_modello(peso, def);
+            [p, S, t1, t2, residui] = plots_modello(peso, def);
 
         elseif i==1 && j==3
             figure('Name', 'Analisi Cicli di Taratura - MP Alluminio a temperatura ambiente');
@@ -210,10 +225,10 @@ for i = 1:length(materiali)
             grid on; title('Ciclo 3');
             xlabel('Forza [N]'); ylabel('\DeltaV/V [-]');
 
-            [p, S, t1, t2] = plots_modello(peso, def);
+            [p, S, t1, t2, residui] = plots_modello(peso, def);
 
         elseif i==1 && j==4
-            figure('Name', 'Analisi Cicli di Calibrazione - MP Alluminio riscaldato');
+            figure('Name', 'Analisi Cicli di Taratura  - MP Alluminio riscaldato');
 
             subplot(1,3,1);
             plot(peso(1:11), def(1:11), 'r-o'); axis square;
@@ -231,13 +246,13 @@ for i = 1:length(materiali)
             grid on; title('Ciclo 3');
             xlabel('Forza [N]'); ylabel('\DeltaV/V [-]');
 
-            [p, S, t1, t2] = plots_modello(peso, def);
+            [p, S, t1, t2, residui] = plots_modello(peso, def);
 
         end 
 
         if i == 2 && j == 1 %Carbonio. 
             
-            figure('Name', 'Analisi Cicli di Calibrazione - QP Carbonio a Temperatura ambiente');
+            figure('Name', 'Analisi Cicli di Taratura  - QP Carbonio a Temperatura ambiente');
 
             subplot(1,3,1);
             plot(peso(1:11), def(1:11), 'r-o'); axis square;
@@ -254,11 +269,11 @@ for i = 1:length(materiali)
             grid on; title('Ciclo 3');
             xlabel('Forza [N]'); ylabel('\DeltaV/V [-]');
 
-            [p, S, t1, t2] = plots_modello(peso, def);
+            [p, S, t1, t2, residui] = plots_modello(peso, def);
 
         elseif i == 2 && j == 2
 
-            figure('Name', 'Analisi Cicli di Calibrazione - QP Carbonio riscaldato');
+            figure('Name', 'Analisi Cicli di Taratura  - QP Carbonio riscaldato');
 
             subplot(1,3,1);
             plot(peso(1:11), def(1:11), 'r-o'); axis square;
@@ -276,10 +291,10 @@ for i = 1:length(materiali)
             grid on; title('Ciclo 3');
             xlabel('Forza [N]'); ylabel('\DeltaV/V [-]');
 
-            [p, S, t1, t2] = plots_modello(peso, def);
+            [p, S, t1, t2, residui] = plots_modello(peso, def);
 
         elseif i==2 && j==3
-            figure('Name', 'Analisi Cicli di Calibrazione - MP Carbonio a temperatura ambiente');
+            figure('Name', 'Analisi Cicli di Taratura  - MP Carbonio a temperatura ambiente');
 
             subplot(1,3,1);
             plot(peso(1:11), def(1:11), 'r-o'); axis square;
@@ -297,10 +312,10 @@ for i = 1:length(materiali)
             grid on; title('Ciclo 3');
             xlabel('Forza [N]'); ylabel('\DeltaV/V [-]');
 
-            [p, S, t1, t2] = plots_modello(peso, def);
+            [p, S, t1, t2, residui] = plots_modello(peso, def);
 
         elseif i==2 && j==4
-            figure('Name', 'Analisi Cicli di Calibrazione - MP Carbonio riscaldato');
+            figure('Name', 'Analisi Cicli di Taratura  - MP Carbonio riscaldato');
 
             subplot(1,3,1);
             plot(peso(1:11), def(1:11), 'r-o'); axis square;
@@ -318,7 +333,7 @@ for i = 1:length(materiali)
             grid on; title('Ciclo 3');
             xlabel('Forza [N]'); ylabel('\DeltaV/V [-]');
 
-            [p, S, t1, t2] = plots_modello(peso, def);
+           [p, S, t1, t2, residui] = plots_modello(peso, def);
 
         end 
         
@@ -329,22 +344,88 @@ for i = 1:length(materiali)
         w_matrix(i,j) = t2; 
 
         R_squared(i,j) = S.rsquared;
+        
+        er_max(i,j) = max(abs(residui));
  end 
 
 end
 
-function [p, S, t1, t2] = plots_modello(peso, def)
 
-%INPUTS
-%peso = vettore contenente le forze peso applicate ai provini [N]
-%def = vettore contenente le defromazioni registrate da centralina [V/V]
+% Variazioni percentuali tra i parametri ricavati a freddo e quelli a caldo
 
-%OUTPUTS
-%p = vettore che contiene i coefficienti di regressione lineare del modello
-%metrologico 
-%S = struttura che contiene i parametri di bontà della regressione 
-%t1 = coefficiente angolare del modello metrologico inverso
-%t2 = intercetta all'ordinata del modello metrologico inverso
+FS = 0.35*9.81; % Fondo della misurazione. [N]
+
+vn_Al_QP = ((n_matrix(1,2)-n_matrix(1,1))*((FS-w_matrix(1,1))/n_matrix(1,1))) *100 / FS ;
+vw_Al_QP = (w_matrix(1,2)-w_matrix(1,1)) * 100 /FS;
+
+vn_Al_MP = ((n_matrix(1,4)-n_matrix(1,3))*((FS-w_matrix(1,3))/n_matrix(1,3))) *100 / FS ;
+vw_Al_MP = (w_matrix(1,4)-w_matrix(1,3)) * 100 /FS;
+
+vn_C_QP = ((n_matrix(2,2)-n_matrix(2,1))*((FS-w_matrix(2,1))/n_matrix(2,1))) *100 / FS ;
+vw_C_QP = (w_matrix(2,2)-w_matrix(2,1)) * 100 /FS;
+
+vn_C_MP = ((n_matrix(2,4)-n_matrix(2,3))*((FS-w_matrix(2,3))/n_matrix(2,3))) *100 / FS ;
+vw_C_MP = (w_matrix(2,4)-w_matrix(2,3)) * 100 /FS;
+
+%%
+% ------------------- Deformazione Termica teorica ------------------------
+% Questi calcoli sono effettuati per la configurazione QP a caldo
+
+alpha_Al = 2.3e-5; % Coefficiente di dilatazione termica dell'alluminio. [1/°C]
+Delta_T = 1.6; % Variazione di temperatura. [°C]
+
+epsilon_t_misurata = -1 * epsilon_matrix{1,2}(1);
+epsilon_t_teorica_Al = alpha_Al * Delta_T;
+er_t_Al = abs(epsilon_t_teorica_Al - epsilon_t_misurata)/epsilon_t_teorica_Al
+%%
+% ----- Incertezze relative al Modulo di Young trovato per le prove -------
+
+% Incertezze tipo relative alle lunghezze, gauge factor e misure lette da
+% centrlina 
+
+uL = 0.29; 
+ub = 0.0029;
+uh = 0.0029;
+uk_k = 1/100;
+uDeltaV_V_V = 1/1000;
+
+% Alluminio
+uE_Al = sqrt((uL/l_Al)^2 + (ub/b_Al)^2 + (2*uh/h_Al)^2 + (uk_k)^2 + (uDeltaV_V_V)^2);
+
+UE_Al_qf = 1.96 * uE_Al/100 * E_matrix(1,1); 
+UE_Al_qc = 1.96 * uE_Al/100 * E_matrix(1,2); 
+UE_Al_mf = 1.96 * uE_Al/100 * E_matrix(1,3); 
+UE_Al_mc = 1.96 * uE_Al/100 * E_matrix(1,4); 
+
+% Carbonio 
+uE_C = sqrt((uL/l_C)^2 + (ub/b_C)^2 + (2*uh/h_C)^2 + (uk_k)^2 + (uDeltaV_V_V)^2); 
+
+UE_C_qf = 1.96 * uE_C/100 * E_matrix(2,1); 
+UE_C_qc = 1.96 * uE_C/100 * E_matrix(2,2); 
+UE_C_mf = 1.96 * uE_C/100 * E_matrix(2,3); 
+UE_C_mc = 1.96 * uE_C/100 * E_matrix(2,4); 
+
+
+%% FUNCTIONS 
+% Questa sezione contiene le funzioni chimate durante l'esecuzione del
+% codice.
+
+function [p, S, t1, t2, residui] = plots_modello(peso, def)
+
+% Questa funzione calcola i parametri della regressione lineare per il modello
+% metrologico e, tramite la sua inversione, ricava la legge di taratura.
+% Inoltre, genera i grafici del modello diretto e del modello inverso.
+%
+% INPUTS
+% peso = vettore contenente le forze peso applicate ai provini [N]
+% def = vettore contenente le deformazioni registrate da centralina [V/V]
+%
+% OUTPUTS
+% p = vettore che contiene i coefficienti di regressione lineare del modello
+% metrologico 
+% S = struttura che contiene i parametri di bontà della regressione 
+% t1 = coefficiente angolare del modello metrologico inverso
+% t2 = intercetta all'ordinata del modello metrologico inverso
 
             figure('Name','Modello metrologico');
            
@@ -383,5 +464,5 @@ function [p, S, t1, t2] = plots_modello(peso, def)
             ylabel('Deviazione Forza [N]');
             xlabel('\DeltaV/V [-]');
 
-
 end 
+
