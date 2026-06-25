@@ -171,8 +171,8 @@ omega = exp(omega);     % Frequenze di campionamento delle FdT, con andamento es
 %                    1
 % H(s) = --------------------------
 %        1/w0^2 s^2 + 2 xi/w0 s + 1
-xi = 0.07;
-w0 = 44;
+xi = 0.007048;
+w0 = 44.6996;
 
 [analytical_magnitudes, analytical_phases] = ...
     bode(tf(1, [1 / (w0^2), 2 * xi / w0, 1]), omega);
@@ -193,9 +193,9 @@ high_w0 = 400;
 % Spiega perfettament la fase.
 [approx_xi_magnitudes, approx_xi_phases] = ...
     bode( ...
-        tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) * tf([1/low_w0, 8], 1), ...
+        tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) * tf([1/low_w0, 8], 1) ...
+            * tf(1, [1 / (high_w0^2), 2 * approx_xi / high_w0, 1]), ...
             omega);
-            %* tf(1, [1 / (high_w0^2), 2 * approx_xi / high_w0, 1]), ...
 
 
 % Spiega perfettamente l'ampiezza.
@@ -213,14 +213,15 @@ high_w0 = 400;
 %        omega);
 
 
-w0 = 44;
-%[approx_xi_magnitudes, approx_xi_phases] = ...
-%    bode( ...
-%        tf(1, [1, 2 * approx_xi * low_w0, low_w0^2]) ...
-%        * tf([1, 1], [1/high_w0^2, 2 * approx_xi / high_w0, 1]) ...
-%        * tf([1, 1], [1/high_w0^2, 2 * approx_xi / high_w0, 1]) ...
-%        , ...
-%            omega);
+low_w0 = 0.12;
+approx_xi = 1.5;
+[approx_xi_magnitudes, approx_xi_phases] = ...
+    bode( ...
+        tf(1, [1, 2 * approx_xi * low_w0, low_w0^2]) ...
+        * tf([1, 1], 1) ...
+        * tf([1, 1], 1) ...
+        , ...
+            omega);
 
 [approx_2ndorder_magnitudes, ~] = bode(tf(60^2, [1, 0]) * tf(1, [1, 0]), omega(round(end/3*2):end));
 [approx_3ndorder_magnitudes, ~] = bode(tf(90^3, [1, 0]) * tf(1, [1, 0]) * tf(1, [1, 0]), omega(round(end/3*2):end));
@@ -239,8 +240,8 @@ scatter(frequency, magnitudes)
 %scatter(frequency, 20 * log10(force_magnitudes));
 %scatter(frequency, 20 * log10(deformation_amplitudes));
 plot(omega, 20 * log10(analytical_magnitudes(:)));
-plot(omega, 20 * log10(analytical_xi_magnitudes(:)));
-plot(omega, 20 * log10(approx_xi_magnitudes(:)));
+%plot(omega, 20 * log10(analytical_xi_magnitudes(:)));
+%plot(omega, 20 * log10(approx_xi_magnitudes(:)));
 %plot(omega(round(end/3*2):end), 20 * log10(approx_2ndorder_magnitudes(:)), '--');
 %plot(omega(round(end/3*2):end), 20 * log10(approx_3ndorder_magnitudes(:)), '--');
 
@@ -258,8 +259,8 @@ scatter(frequency, phases);
 %scatter(frequency, mod(rad2deg(deformation_phases), 360) - 360);
 %scatter(frequency, mod(rad2deg(force_phases), 360) - 360);
 plot(omega, analytical_phases(:));
-plot(omega, analytical_xi_phases(:));
-plot(omega, approx_xi_phases(:));
+%plot(omega, analytical_xi_phases(:));
+%plot(omega, approx_xi_phases(:));
 
 %% Plot ellipses
 
