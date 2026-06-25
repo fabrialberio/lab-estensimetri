@@ -172,7 +172,7 @@ omega = exp(omega);     % Frequenze di campionamento delle FdT, con andamento es
 % H(s) = --------------------------
 %        1/w0^2 s^2 + 2 xi/w0 s + 1
 xi = 0.07;
-w0 = 136;
+w0 = 44;
 
 [analytical_magnitudes, analytical_phases] = ...
     bode(tf(1, [1 / (w0^2), 2 * xi / w0, 1]), omega);
@@ -181,7 +181,7 @@ w0 = 136;
 %                     1
 % H(s) = ----------------------------
 %        1/w0^2 s^2 + 2 xi_2/w0 s + 1
-xi_2 = 1;
+xi_2 = 0.6;
 
 [analytical_xi_magnitudes, analytical_xi_phases] = ...
     bode(tf(1, [1 / (w0^2), 2 * xi_2 / w0, 1]), omega);
@@ -241,8 +241,8 @@ scatter(frequency, magnitudes)
 plot(omega, 20 * log10(analytical_magnitudes(:)));
 plot(omega, 20 * log10(analytical_xi_magnitudes(:)));
 plot(omega, 20 * log10(approx_xi_magnitudes(:)));
-plot(omega(round(end/3*2):end), 20 * log10(approx_2ndorder_magnitudes(:)), '--');
-plot(omega(round(end/3*2):end), 20 * log10(approx_3ndorder_magnitudes(:)), '--');
+%plot(omega(round(end/3*2):end), 20 * log10(approx_2ndorder_magnitudes(:)), '--');
+%plot(omega(round(end/3*2):end), 20 * log10(approx_3ndorder_magnitudes(:)), '--');
 
 legend(["Dati misurati"; "Soluzione analitica"; sprintf("Soluzione analitica con $\\xi=%.02f$", xi_2); "Risonanza a bassa frequenza"], "Interpreter", "latex")
 

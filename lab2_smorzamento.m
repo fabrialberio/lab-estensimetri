@@ -40,7 +40,9 @@ omega_n = 2 * pi * 136; % 136 Hz è la risonanza che non ci viene
 xis = -coeffAng ./ omega_n;
 xi = mean(xis);
 
-fprintf("xi = %f", xi);
+devStd = sqrt(1/(5-1) * sum((xis - xi).^2));
+
+fprintf("xi = %f\n S_xi = %f\n", xi, devStd);
 
 
 figure();
