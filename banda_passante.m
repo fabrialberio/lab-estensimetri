@@ -6,7 +6,7 @@ f_banda_passante = [];
 sensibilita_lineare = deformation_magnitudes ./ force_magnitudes;
 
 for i=1:length(frequency)
-    if frequency(i)<45 &&frequency(i)>6
+    if frequency(i)<=45 &&frequency(i)>=6
         f_banda_passante = [f_banda_passante;frequency(i)];
         banda_passante = [banda_passante;sensibilita_lineare(i)];
     end
@@ -16,11 +16,11 @@ S_med_lineare = mean(banda_passante);
 S_var_lineare = var(banda_passante);
 S_dev_lineare = sqrt(S_var_lineare);
 
-t_critico = 2.2622; %per un intervallo al 95%
-inf_lineare= S_med_lineare - t_critico*S_dev_lineare/(sqrt(10));
-sup_linare= S_med_lineare + t_critico*S_dev_lineare/(sqrt(10));
+t_critico = 2.201; %per un intervallo al 95%
+inf_lineare= S_med_lineare - t_critico*S_dev_lineare/(sqrt(12));
+sup_linare= S_med_lineare + t_critico*S_dev_lineare/(sqrt(12));
 
-media_dB = 20*log10(S_med_lineare);
+media_dB = 20*log10(S_med_lineare)
 sup = 20*log10(sup_linare)
 inf = 20*log10(inf_lineare)
 
