@@ -12,8 +12,8 @@ clear
 clc
 close all
 
-%% Codice 
-tic;
+%% CODE 
+
 % --------------------------- Caricamento dati ----------------------------
 
 % Provino in alluminio.
@@ -23,13 +23,13 @@ l_Al = (155-27) / 1000; % Distanza tra estensimetro e punto di carico in m.
 E_teorico_Al = 70e9;    % Modulo di Young teorico per l'Alluminio in Pa
 
 % Quarto di ponte con provino in alluminio.
-QP_Al = readtable("QB alluminio.csv", "VariableNamingRule", "preserve");
+QP_Al = readtable("lab1/QB alluminio.csv", "VariableNamingRule", "preserve");
 QP_Al(:, 4) = table(-1 * table2array(QP_Al(:, 4))); % Correzione deformazione misurata negativa.
 QP_Al_freddo = QP_Al(1:40, :);
 QP_Al_caldo = QP_Al(41:end, :);
 
 % Mezzo ponte con provino in alluminio.
-MP_Al = readtable("HB alluminio.csv", "VariableNamingRule", "preserve");
+MP_Al = readtable("lab1/HB alluminio.csv", "VariableNamingRule", "preserve");
 MP_Al = MP_Al(~isnan(table2array(MP_Al(:, 4))), :); % Rimozione valori di deformazione NaN (outlier).
 MP_Al_freddo = MP_Al(1:32, :);
 MP_Al_caldo = MP_Al(33:end, :);
@@ -40,13 +40,13 @@ h_C = 1.98 / 1000;  % Spessore in m.
 l_C = 125 / 1000;   % Distanza tra estensimetro e punto di carico in m.
 
 % Quarto di ponte con provino in carbonio.
-QP_C = readtable("QB carbonio.csv", "VariableNamingRule", "preserve");
+QP_C = readtable("lab1/QB carbonio.csv", "VariableNamingRule", "preserve");
 QP_C(:, 4) = table(-1 * table2array(QP_C(:, 4))); % Correzione deformazione misurata negativa.
 QP_C_freddo = QP_C(1:33, :);
 QP_C_caldo = QP_C(34:end, :);
 
 % Mezzo ponte con provino in carbonio.
-MP_C = readtable("HB carbonio.csv", "VariableNamingRule", "preserve");
+MP_C = readtable("lab1/HB carbonio.csv", "VariableNamingRule", "preserve");
 MP_C = MP_C(~isnan(table2array(MP_C(:, 4))), :); % Rimozione valori di deformazione NaN (outlier).
 MP_C_freddo = MP_C(1:32, :);
 MP_C_caldo = MP_C(33:end, :);
@@ -430,7 +430,7 @@ perc_su_tot_C = (epsilon_ass_C/def_qp_C_max)*100;
 % ----- Incertezze relative al Modulo di Young trovato per le prove -------
 
 % Incertezze tipo relative alle lunghezze, gauge factor e misure lette da
-% centrlina 
+% centralina 
 
 uL = 0.29/1000; 
 ub = 0.0029/1000;
@@ -454,7 +454,7 @@ UE_C_qc = 1.96 * uE_C * E_matrix(2,2);
 UE_C_mf = 1.96 * uE_C * E_matrix(2,3); 
 UE_C_mc = 1.96 * uE_C * E_matrix(2,4); 
 
-toc
+
 %% FUNCTIONS 
 % Questa sezione contiene le funzioni chimate durante l'esecuzione del
 % codice.

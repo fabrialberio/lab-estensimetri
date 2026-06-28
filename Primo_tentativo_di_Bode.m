@@ -3,8 +3,9 @@ clc
 clearvars
 close all
 
-%% modulo 
- 
+% Calcolo delle ampiezze
+% ------------------------------------------------------------------------------
+
 freqs = [0.3,0.4,0.5,0.6,0.7,0.8,0.9,...
     1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,55,60,65,70,...
     80,90,100,110,120,130,140,150,160,170,180,190,200,210,220,...
@@ -16,7 +17,7 @@ rapporto= zeros(size(freqs));
  
 
 for i = 1:length(freqs)
-    filename = sprintf('%gHz.csv', freqs(i));
+    filename = sprintf('lab2_renamed/%gHz.csv', freqs(i));
     
     if isfile(filename)
         % leggiamo i dati saltando le 9 righe di intestazione
@@ -46,12 +47,13 @@ for i = 1:length(freqs)
 end
 
 
-%% fase 
+% Calcolo delle fasi
+% ------------------------------------------------------------------------------
 
 fasi = zeros(size(freqs));
 
 for i = 1:length(freqs)
-    filename = sprintf('%gHz.csv', freqs(i));
+    filename = sprintf('lab2_renamed/%gHz.csv', freqs(i));
     if isfile(filename)
         data = readtable(filename, 'NumHeaderLines', 9);
         F= data{:, 3} - mean(data{:, 3}); % forza centrata
@@ -74,13 +76,13 @@ for i = 1:length(freqs)
     end
 end
 
-%% Bode plots
+% Diagrammi di Bode
+% ------------------------------------------------------------------------------
 
 % Diagramma di modulo 
-amp_dB = 20 * log10(rapporto);
 figure('Name', 'Diagramma di bode ');
 subplot(2,1,1);
-semilogx(freqs, amp_dB, 'o');
+semilogx(freqs, 20 * log10(rapporto), 'o');
 title("Diagramma di Bode dell'ampiezza")
 grid on;
 legend('Dati misurati')
@@ -89,13 +91,14 @@ ylabel('Rapporto di ampiezza [dB]');
 
 %Diagramma di Fase
 subplot(2,1,2);
-semilogx(freqs, fasi, 'o');
+semilogx(freqs, -fasi, 'o');
 title('Diagramma di Bode della fase')
 grid on;
 xlabel('Frequenza [Hz]');
 ylabel('Sfasamento [°]');
 
-%% Analiticamente 
+% Calcolo analitico della frequenza di risonanza e delle incertezze 
+% ------------------------------------------------------------------------------
 
 % Incertezze tipo
 ul = 0.0029/1000; 
@@ -125,4 +128,6 @@ U_k = 1.96*u_k*k;
 u_f = sqrt((2*ul/l)^2 + (uh/h)^2);
 U_f = 1.96*u_f*f_n;
 U_omega =1.96*u_f*omega_n;
+
+fprintf("Frequenza di risonanza analitica: %g ± %g Hz.\n", f_n, U_f)
 

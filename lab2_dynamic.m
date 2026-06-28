@@ -1,43 +1,20 @@
-%% Associazione dei filename con le frequenze
+% Associazione dei filename con le frequenze
+% ------------------------------------------------------------------------------
 
-filename_template = "lab2/data_45_%03d.csv";
-max_filename_number = 54;
+frequency = [0.3,0.4,0.5,0.6,0.7,0.8,0.9,...
+    1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,55,60,65,70,...
+    80,90,100,110,120,130,140,150,160,170,180,190,200,210,220,...
+    230,240,250,260,270,280,290,300]; 
 
-filenames = strings(max_filename_number, 1);    % Nomi dei file che contengono le serie di dati.
-frequency = zeros(max_filename_number, 1);      % Frequenza corrispondente a ogni filename, in Hz.
-skipped = 0; % Keeps count of skipped files.
-
-for i = 1:max_filename_number
-    filename = sprintf(filename_template, i);
-    filenames(i - skipped) = sprintf(filename_template, i);
-
-    % Skip adding non-existent files.
-    if ~isfile(filename)
-        fprintf("Skipping `%s`: file not found.\n", filename);
-        skipped = skipped + 1;
-    end
-
-    if i == 1
-        frequency(i) = 1;                                           % Il primo file è la misura a 1 Hz.
-    elseif i <= 10
-        frequency(i - skipped) = frequency(i - skipped - 1) + 1;    % Fino al file 010 passi da 1Hz.
-    elseif i <= 24
-        frequency(i - skipped) = frequency(i - skipped - 1) + 5;    % Fino al file 024 passi da 5Hz.
-    elseif i < 48
-        frequency(i - skipped) = frequency(i - skipped - 1) + 10;   % Successivamente passi da 10Hz.
-    elseif i == 48
-        frequency(i - skipped) = 0.3;                               % Dal file 48 si riparte dal 300mHz.
-    else
-        frequency(i - skipped) = frequency(i - skipped - 1) + 0.1;  % Successivamente passi da 100mHz.
-    end
+filenames = strings(length(frequency), 1);    % Nomi dei file che contengono le serie di dati.
+for i = 1:length(frequency)
+    filenames(i) = sprintf("lab2_frequencies/%gHz.csv", frequency(i));
 end
-
-frequency = frequency(filenames ~= "");
-filenames = filenames(filenames ~= "");
 
 Hz_labels = arrayfun(@(f) sprintf("%.02f Hz", f), frequency);
 
-%% Estrazione di forze e deformazioni dai file
+% Estrazione di forze e deformazioni dai file
+% ------------------------------------------------------------------------------
 
 sample_count = 10000;       % Numero di campioni restituiti dall'oscilloscopio.
 extensimeter_voltage = 5;   % Voltaggio di alimentazione dell'estensimetro.
@@ -68,7 +45,8 @@ for i = 1:length(filenames)
         "Name", "Forza [mV]");
 end
 
-%% Trasformata di Fourier
+% Trasformata di Fourier
+% ------------------------------------------------------------------------------
 
 deformation_magnitudes = zeros(length(filenames), 1);
 deformation_frequencies = zeros(length(filenames), 1);
@@ -117,7 +95,8 @@ end
 magnitudes = 20 * log10(deformation_magnitudes ./ force_magnitudes);    % Rapporto di ampiezza, in dB.
 phases = mod(rad2deg(deformation_phases - force_phases), 360) - 360;    % Sfasamento, riportato all'intervallo [-180°, 0°].
 
-%% Spiegazione trasformata di Fourier
+% Spiegazione trasformata di Fourier
+% ------------------------------------------------------------------------------
 
 i = 20;
 time_duration = max(deformations{i}.Time);
@@ -162,7 +141,8 @@ plot( ...
     rad2deg(angle(forces_fft(1:display_count))));
 xline(expected_frequency, "--r");
 
-%% Diagrammi di Bode
+% Diagrammi di Bode
+% ------------------------------------------------------------------------------
 
 omega = linspace(log(0.1), log(500), 500);
 omega = exp(omega);     % Frequenze di campionamento delle FdT, con andamento esponenziale.
@@ -190,31 +170,6 @@ approx_xi = 1.5;
 low_w0 = 0.12;
 high_w0 = 400;
 
-% Spiega perfettament la fase.
-[approx_xi_magnitudes, approx_xi_phases] = ...
-    bode( ...
-        tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) * tf([1/low_w0, 8], 1) ...
-            * tf(1, [1 / (high_w0^2), 2 * approx_xi / high_w0, 1]), ...
-            omega);
-
-
-% Spiega perfettamente l'ampiezza.
-%[approx_xi_magnitudes, approx_xi_phases] = ...
-%    bode( ...
-%        tf([1/low_w0, 8], 1) * tf([1/low_w0, 8], [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) ...
-%        * tf(1, [1 / (w0^2), 2 * approx_xi / w0, 1]) * tf(1, [1/w0, 1]) * tf(1, [1/w0, 1]), ...
-%        omega);
-
-% Spiega perfettamente l'ampiezza.
-%[approx_xi_magnitudes, approx_xi_phases] = ...
-%    bode( ...
-%        tf(1, [1 / (low_w0^2), 2 * approx_xi / low_w0, 1]) ...
-%        * tf(1, [1 / (w0^2), 2 * approx_xi / w0, 1]) * tf(1, [1/w0, 1]) * tf(1, [1/w0, 1]), ...
-%        omega);
-
-
-low_w0 = 0.12;
-approx_xi = 1.5;
 [approx_xi_magnitudes, approx_xi_phases] = ...
     bode( ...
         tf(1, [1, 2 * approx_xi * low_w0, low_w0^2]) ...
@@ -237,13 +192,9 @@ xlabel("Frequenza [Hz]");
 ylabel("Rapporto di ampiezza [dB]");
 xscale log;
 scatter(frequency, magnitudes)
-%scatter(frequency, 20 * log10(force_magnitudes));
-%scatter(frequency, 20 * log10(deformation_amplitudes));
 plot(omega, 20 * log10(analytical_magnitudes(:)));
-%plot(omega, 20 * log10(analytical_xi_magnitudes(:)));
-%plot(omega, 20 * log10(approx_xi_magnitudes(:)));
-%plot(omega(round(end/3*2):end), 20 * log10(approx_2ndorder_magnitudes(:)), '--');
-%plot(omega(round(end/3*2):end), 20 * log10(approx_3ndorder_magnitudes(:)), '--');
+plot(omega, 20 * log10(analytical_xi_magnitudes(:)));
+plot(omega, 20 * log10(approx_xi_magnitudes(:)));
 
 legend(["Dati misurati"; "Soluzione analitica"; sprintf("Soluzione analitica con $\\xi=%.02f$", xi_2); "Risonanza a bassa frequenza"], "Interpreter", "latex")
 
@@ -256,20 +207,6 @@ ylabel("Sfasamento [°]");
 yticks(-360:90:0);
 xscale log;
 scatter(frequency, phases);
-%scatter(frequency, mod(rad2deg(deformation_phases), 360) - 360);
-%scatter(frequency, mod(rad2deg(force_phases), 360) - 360);
 plot(omega, analytical_phases(:));
-%plot(omega, analytical_xi_phases(:));
-%plot(omega, approx_xi_phases(:));
-
-%% Plot ellipses
-
-figure()
-grid on
-hold on
-
-for i = 1:length(deformations)
-    plot(deformations{i}.Data, forces{i}.Data)
-end
-
-legend(Hz_labels, "Interpreter", "none")
+plot(omega, analytical_xi_phases(:));
+plot(omega, approx_xi_phases(:));
