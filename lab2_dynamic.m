@@ -1,4 +1,4 @@
-% Associazione dei filename con le frequenze
+%% Associazione dei filename con le frequenze
 % ------------------------------------------------------------------------------
 
 frequency = [0.3,0.4,0.5,0.6,0.7,0.8,0.9,...
@@ -13,7 +13,7 @@ end
 
 Hz_labels = arrayfun(@(f) sprintf("%.02f Hz", f), frequency);
 
-% Estrazione di forze e deformazioni dai file
+%% Estrazione di forze e deformazioni dai file
 % ------------------------------------------------------------------------------
 
 sample_count = 10000;       % Numero di campioni restituiti dall'oscilloscopio.
@@ -45,7 +45,7 @@ for i = 1:length(filenames)
         "Name", "Forza [mV]");
 end
 
-% Trasformata di Fourier
+%% Trasformata di Fourier
 % ------------------------------------------------------------------------------
 
 deformation_magnitudes = zeros(length(filenames), 1);
@@ -95,7 +95,7 @@ end
 magnitudes = 20 * log10(deformation_magnitudes ./ force_magnitudes);    % Rapporto di ampiezza, in dB.
 phases = mod(rad2deg(deformation_phases - force_phases), 360) - 360;    % Sfasamento, riportato all'intervallo [-180°, 0°].
 
-% Spiegazione trasformata di Fourier
+%% Spiegazione trasformata di Fourier
 % ------------------------------------------------------------------------------
 
 i = 20;
@@ -141,7 +141,7 @@ plot( ...
     rad2deg(angle(forces_fft(1:display_count))));
 xline(expected_frequency, "--r");
 
-% Diagrammi di Bode
+%% Diagrammi di Bode
 % ------------------------------------------------------------------------------
 
 omega = linspace(log(0.1), log(500), 500);

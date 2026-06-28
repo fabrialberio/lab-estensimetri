@@ -2,7 +2,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%                                                         %%%%%%%%%
-%%%%%%%%%         LABORATORIO 1: CAMPAGNA DI MISURA STATICA       %%%%%%%%%
+%%%%%%%%%        LABORATORIO 2: CAMPAGNA DI MISURA DINAMICA       %%%%%%%%%
 %%%%%%%%%                                                         %%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -14,8 +14,8 @@ close all
 %% CODE
 
 % Il seguente codice è pensato per essere eseguito nella cartella contenente le
-% sottocartelle lab1/, lab2/ e lab2_frequencies/ che contengono i dati raccolti
-% nei due laboratori.
+% sottocartelle lab2/ e lab2_frequencies/ che contengono i dati raccolti nel 
+% secondo laboratorio.
 
 % Copia dei file di dati con un nome che rifletta la frequenza di campionamento.
 % ==============================================================================

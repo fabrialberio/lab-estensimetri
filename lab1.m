@@ -14,6 +14,9 @@ close all
 
 %% CODE 
 
+% Il seguente codice è pensato per essere eseguito nella cartella contenente la
+% sottocartella lab1/, che contiene i dati raccolti nel primo laboratorio.
+
 % --------------------------- Caricamento dati ----------------------------
 
 % Provino in alluminio.
